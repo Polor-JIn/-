@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>亚马逊跟卖工作台</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f6fa;color:#333}
+header{background:#27408b;color:#fff;padding:14px 24px;font-size:18px;font-weight:600}
+nav{background:#fff;border-bottom:1px solid #e3e6ea;padding:0 12px;display:flex;flex-wrap:wrap;gap:4px}
+nav button{border:none;background:none;padding:12px 16px;font-size:14px;color:#555;cursor:pointer;border-bottom:3px solid transparent}
+nav button.active{color:#27408b;border-bottom-color:#27408b;font-weight:600}
+main{padding:20px 24px;max-width:1400px;margin:0 auto}
+section{display:none}
+section.active{display:block}
+h2{margin:0 0 14px;font-size:16px;color:#27408b}
+.card{background:#fff;border:1px solid #e3e6ea;border-radius:8px;padding:16px;margin-bottom:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+label{font-size:13px;color:#666}
+input[type=file]{font-size:13px}
+.btn{background:#27408b;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px}
+.btn.gray{background:#8a93a6}
+.btn.green{background:#2e8b57}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn:hover{opacity:.9}
+input[type=text],input[type=number]{padding:7px 10px;border:1px solid #ccd0d7;border-radius:6px;font-size:13px}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
+th,td{border:1px solid #e3e6ea;padding:7px 9px;text-align:left;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+th{background:#f0f3f9;color:#333;position:sticky;top:0}
+tr:hover{background:#f7f9fd}
+.tip{font-size:12px;color:#888;margin-top:6px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:#eef2fb;color:#27408b;margin-right:4px}
+.badge.red{background:#fdecec;color:#c0392b}
+.badge.green{background:#e8f7ee;color:#2e8b57}
+.badge.orange{background:#fff6e8;color:#e67e22}
+textarea{width:100%;min-height:70px;padding:7px;border:1px solid #ccd0d7;border-radius:6px;font-size:13px}
+pre.log{background:#f7f9fd;padding:10px;border-radius:6px;font-size:12px;white-space:pre-wrap}
+a{color:#27408b}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>🛠 亚马逊跟卖工作台</header>
+<nav id="tabs">
+  <button data-tab="upload" class="active">上传中心</button>
+  <button data-tab="products">商品库</button>
+  <button data-tab="aliases">乱码映射</button>
+  <button data-tab="review">去重审核</button>
+  <button data-tab="weights">重量批次</button>
+  <button data-tab="check">称重对账</button>
+  <button data-tab="purchase">采购单</button>
+  <button data-tab="report">利润报告</button>
+  <button data-tab="config">配置中心</button>
+</nav>
+<main>
+
+<!-- 上传中心 -->
+<section id="upload" class="active">
+  <h2>上传中心</h2>
+  <div class="grid2">
+    <div class="card">
+      <h2>① 跟卖数据表（生成上架表）</h2>
+      <div class="row"><input type="file" id="f_listing" accept=".xlsx,.csv"></div>
+      <button class="btn" onclick="uploadListing()">上传清洗</button>
+      <div id="log_listing" class="pre" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>② 发货订单表（清洗+推送+利润初算）</h2>
+      <div class="row"><input type="file" id="f_shipping" accept=".xlsx,.csv"></div>
+      <button class="btn" onclick="uploadShipping()">上传处理</button>
+      <div id="log_shipping" class="pre" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>③ 货代称重清单（对账）</h2>
+      <div class="row"><input type="file" id="f_courier" accept=".xlsx,.csv"></div>
+      <button class="btn" onclick="uploadCourier()">导入对账</button>
+      <div id="log_courier" class="pre" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>④ 订单匹配 1688（生成采购单）</h2>
+      <div class="row"><input type="file" id="f_purchase" accept=".xlsx,.csv"></div>
+      <button class="btn" onclick="purchaseMatch()">匹配并生成采购单</button>
+      <div id="log_purchase" class="pre" style="margin-top:10px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 商品库 -->
+<section id="products">
+  <h2>商品库（跟卖 + 发货统一归集）</h2>
+  <div class="card">
+    <div class="row">
+      <input type="text" id="q_products" placeholder="搜索 SKU/标题/ASIN" style="width:260px" onkeyup="if(event.key==='Enter')loadProducts()">
+      <button class="btn sm" onclick="loadProducts()">搜索</button>
+      <button class="btn sm green" onclick="openProductForm()">＋ 手动新增</button>
+    </div>
+    <table id="tbl_products"><thead><tr>
+      <th>SKU</th><th>ASIN</th><th>标题</th><th>颜色</th><th>尺码</th><th>采购价</th><th>参考重量</th>
+      <th>1688ID</th><th>1688规格</th><th>来源</th><th>状态</th><th>操作</th>
+    </tr></thead><tbody></tbody></table>
+    <div id="pform" style="display:none;margin-top:12px;border-top:1px dashed #ccc;padding-top:12px">
+      <div class="row">
+        <input type="hidden" id="pf_id" value="">
+        <input type="text" id="pf_sku" placeholder="SKU(留空生成?)"><input type="text" id="pf_asin" placeholder="ASIN"><input type="text" id="pf_title" placeholder="标题">
+        <input type="text" id="pf_color" placeholder="颜色"><input type="text" id="pf_size" placeholder="尺码">
+      </div>
+      <div class="row">
+        <input type="text" id="pf_price" placeholder="采购价"><input type="text" id="pf_weight" placeholder="参考重量kg">
+        <input type="text" id="pf_1688" placeholder="1688ID"><input type="text" id="pf_url" placeholder="1688链接"><input type="text" id="pf_spec" placeholder="1688规格">
+      </div>
+      <button class="btn green" onclick="saveProduct()">保存</button>
+    </div>
+  </div>
+</section>
+
+<!-- 乱码映射 -->
+<section id="aliases">
+  <h2>乱码 SKU 人工映射（老品收编）</h2>
+  <div class="card">
+    <div class="row"><button class="btn sm" onclick="loadAliases()">刷新</button></div>
+    <table id="tbl_aliases"><thead><tr><th>乱码SKU</th><th>已绑定产品</th><th>目标产品ID</th><th>操作</th></tr></thead><tbody></tbody></table>
+  </div>
+</section>
+
+<!-- 去重审核 -->
+<section id="review">
+  <h2>去重冲突人工审核（关键字段不一致 → 待审核）</h2>
+  <div class="card">
+    <div class="row"><button class="btn sm" onclick="loadReview()">刷新</button></div>
+    <table id="tbl_review"><thead><tr><th>SKU</th><th>冲突字段</th><th>库中旧值</th><th>新值</th><th>操作</th></tr></thead><tbody></tbody></table>
+  </div>
+</section>
+
+<!-- 重量批次 -->
+<section id="weights">
+  <h2>多批次重量（一 SKU 多批次历史）</h2>
+  <div class="card">
+    <div class="row">
+      <input type="text" id="q_weights" placeholder="SKU" style="width:240px">
+      <button class="btn sm" onclick="loadWeights()">查询</button>
+    </div>
+    <table id="tbl_weights"><thead><tr><th>SKU</th><th>日期</th><th>重量kg</th><th>来源</th></tr></thead><tbody></tbody></table>
+  </div>
+</section>
+
+<!-- 称重对账 -->
+<section id="check">
+  <h2>货代称重对账（差异超阈值标红警告）</h2>
+  <div class="card">
+    <div class="row"><button class="btn sm" onclick="loadChecks()">刷新</button>
+      <button class="btn sm green" onclick="applyCourier()">采用通过项货代重量</button>
+    </div>
+    <table id="tbl_checks"><thead><tr><th>单号</th><th>我方重量</th><th>货代重量</th><th>差异%</th><th>告警</th><th>已标记</th></tr></thead><tbody></tbody></table>
+  </div>
+</section>
+
+<!-- 采购单 -->
+<section id="purchase">
+  <h2>已生成 1688 采购单</h2>
+  <div class="card">
+    <div class="row"><button class="btn sm" onclick="loadPurchases()">刷新</button></div>
+    <table id="tbl_purchase"><thead><tr><th>批次</th><th>1688ID</th><th>链接</th><th>SKU</th><th>规格</th><th>数量</th><th>单价</th></tr></thead><tbody></tbody></table>
+  </div>
+</section>
+
+<!-- 利润报告 -->
+<section id="report">
+  <h2>利润分析（精算口径：佣金+运费+附加费+采购成本）</h2>
+  <div class="card">
+    <div class="row">
+      <button class="btn sm" onclick="loadReport()">刷新</button>
+      <a class="btn sm gray" href="/api/report/profit/download">下载 Excel</a>
+    </div>
+    <table id="tbl_report"><thead><tr>
+      <th>SKU</th><th>标题</th><th>采购成本</th><th>重量</th><th>重量来源</th><th>预估运费</th>
+      <th>当前售价</th><th>来源</th><th>保底价</th><th>保底说明</th><th>单件净利</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+</section>
+
+<!-- 配置中心 -->
+<section id="config">
+  <h2>配置中心</h2>
+  <div class="grid2">
+    <div class="card">
+      <h2>跟卖默认值 & 计算参数</h2>
+      <div class="row"><label>默认库存</label><input type="number" id="cfg_inventory"></div>
+      <div class="row"><label>单次调整价格</label><input type="number" step="0.01" id="cfg_adjust_price"></div>
+      <div class="row"><label>最大采购量</label><input type="number" id="cfg_max_purchase"></div>
+      <div class="row"><label>称重差异阈值%</label><input type="number" step="0.5" id="cfg_threshold"></div>
+      <div class="row"><label>佣金率</label><input type="number" step="0.01" id="cfg_commission"></div>
+      <div class="row"><label>目标毛利率</label><input type="number" step="0.01" id="cfg_margin"></div>
+      <div class="row"><label>采购地址</label><input type="text" id="cfg_address" style="width:300px"></div>
+      <div class="row"><label>飞书Webhook</label><input type="text" id="cfg_webhook" style="width:360px" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxx"></div>
+      <button class="btn" onclick="saveConfig()">保存</button>
+      <div class="tip">飞书群 → 设置 → 群机器人 → 添加自定义机器人，复制 Webhook 地址填入即可；填了之后发货处理会自动推送汇总消息。</div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>运费模板</h2>
+        <div class="row">
+          <input type="text" id="ft_channel" placeholder="渠道名"><input type="number" id="ft_first_w" placeholder="首重kg" step="0.1"><input type="number" id="ft_first_p" placeholder="首重价" step="0.01">
+          <input type="number" id="ft_cont_w" placeholder="续重kg" step="0.1"><input type="number" id="ft_cont_p" placeholder="续重价" step="0.01">
+          <button class="btn sm" onclick="addTemplate()">添加</button>
+        </div>
+        <table id="tbl_templates"><thead><tr><th>渠道</th><th>首重kg</th><th>首重价</th><th>续重kg</th><th>续重价</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="card">
+        <h2>偏远邮编附加费</h2>
+        <div class="row">
+          <input type="text" id="ps_channel" placeholder="渠道(可空=全渠道)"><input type="text" id="ps_pattern" placeholder="邮编前缀 如 99"><input type="number" id="ps_amount" placeholder="附加费" step="0.01">
+          <button class="btn sm" onclick="addSurcharge()">添加</button>
+        </div>
+        <table id="tbl_surcharges"><thead><tr><th>渠道</th><th>国家</th><th>邮编前缀</th><th>附加费</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="card">
+        <h2>颜色 / 尺码字典</h2>
+        <div class="row">
+          <select id="dict_kind"><option value="color">颜色</option><option value="size">尺码</option></select>
+          <input type="text" id="dict_std" placeholder="标准值"><input type="text" id="dict_alias" placeholder="别名">
+          <button class="btn sm" onclick="addDict()">添加</button>
+        </div>
+        <pre id="dict_view" class="log"></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function api(url, opt){ return fetch(url, opt).then(r => r.ok ? r.json() : r.text().then(t => {throw new Error(t)})); }
+function log(el, html, extra){ $(el).innerHTML = (($(el).innerHTML||'') + (extra?'<br>':'') + html); }
+function fmt(v){ return (v===null||v===undefined||v==='') ? '-' : v; }
+
+// 页签切换
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('main section').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); $(b.dataset.tab).classList.add('active');
+  ({products:loadProducts, aliases:loadAliases, review:loadReview, check:loadChecks,
+    purchase:loadPurchases, report:loadReport, config:loadConfig}[b.dataset.tab] || function(){} )();
+});
+
+// ---------- 上传 ----------
+async function uploadListing(){
+  const f = $('f_listing').files[0]; if(!f) return alert('请选择文件');
+  const fd = new FormData(); fd.append('file', f);
+  $('log_listing').innerHTML = '处理中...';
+  try{
+    const r = await api('/api/upload/listing', {method:'POST', body:fd});
+    $('log_listing').innerHTML =
+      `本批次: 新增 <b>${r.summary.added}</b> | 已存在跳过 <b>${r.summary.skipped}</b> | 冲突待审 <b>${r.summary.conflict}</b> | 待确认 <b>${r.summary.pending}</b><br>
+       新颜色未收录: ${r.new_colors.length?esc(r.new_colors.join(',')):'无'}<br>
+       新尺码未收录: ${r.new_sizes.length?esc(r.new_sizes.join(',')):'无'}<br>
+       <a href="/files/${r.output}" target="_blank">📥 下载上架表（价格/保低价待填）</a>`;
+  }catch(e){ $('log_listing').innerHTML = '出错: ' + e.message; }
+}
+async function uploadShipping(){
+  const f = $('f_shipping').files[0]; if(!f) return alert('请选择文件');
+  const fd = new FormData(); fd.append('file', f);
+  $('log_shipping').innerHTML = '处理中...';
+  try{
+    const r = await api('/api/upload/shipping', {method:'POST', body:fd});
+    if(r.already_processed){ $('log_shipping').innerHTML = '该文件今天已处理过（幂等跳过），不会重复推送。'; return; }
+    let h = `批次 ${r.batch}：订单 <b>${r.stats.orders}</b> | 新增 <b>${r.stats.added}</b> | 待映射 <b>${r.stats.unknown_sku}</b><br>`;
+    h += `飞书文本推送: ${r.lark_text_ok ? '✅' : '⚠️未配置Webhook'}<br>`;
+    h += `拼图: ${r.collage ? `<a href="/files/${r.collage}" target="_blank">📥 查看拼图</a>` : '无'}`;
+    if(r.unknown_skus && r.unknown_skus.length) h += `<br>⚠️ 待映射乱码: ${esc(r.unknown_skus.slice(0,20).join(', '))}`;
+    $('log_shipping').innerHTML = h;
+  }catch(e){ $('log_shipping').innerHTML = '出错: ' + e.message; }
+}
+async function uploadCourier(){
+  const f = $('f_courier').files[0]; if(!f) return alert('请选择文件');
+  const fd = new FormData(); fd.append('file', f);
+  $('log_courier').innerHTML = '对账中...';
+  try{
+    const r = await api('/api/upload/courier', {method:'POST', body:fd});
+    $('log_courier').innerHTML = `核对 ${r.stats.rows} 单 | 匹配到重量 ${r.stats.known} | 无法匹配 ${r.stats.unknown} | <b>⚠️ 超阈值告警 ${r.stats.alert}</b><br>
+      阈值: ±${r.threshold}%<br><a href="#check" onclick="document.querySelector('#tabs button[data-tab=check]').click()">查看对账明细 →</a>`;
+    loadChecks();
+  }catch(e){ $('log_courier').innerHTML = '出错: ' + e.message; }
+}
+async function purchaseMatch(){
+  const f = $('f_purchase').files[0]; if(!f) return alert('请选择文件');
+  const fd = new FormData(); fd.append('file', f);
+  $('log_purchase').innerHTML = '匹配中...';
+  try{
+    const r = await api('/api/purchase/match', {method:'POST', body:fd});
+    const saved = await api('/api/purchase/save', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({batch: r.batch, matched: r.matched})});
+    let h = `匹配成功 <b>${r.matched.length}</b> | 未匹配 <b>${r.unmatched.length}</b><br>`;
+    if(saved && saved.output) h += `<a href="/files/${saved.output}" target="_blank">📥 下载1688采购单</a><br>`;
+    if(r.unmatched.length) h += '未匹配: ' + esc(r.unmatched.map(u=>`${u.sku}(${u.reason})`).join('， '));
+    $('log_purchase').innerHTML = h;
+  }catch(e){ $('log_purchase').innerHTML = '出错: ' + e.message; }
+}
+
+// ---------- 商品库 ----------
+async function loadProducts(){
+  const q = $('q_products').value;
+  const r = await api('/api/products?q=' + encodeURIComponent(q));
+  renderTable('tbl_products', ['sku','asin','title','color','size','purchase_price','ref_weight','p1688_id','purchase_spec','source','status','_op'],
+    r.map(p=>({...p, _op:`<button class="btn sm" onclick="editProduct(${p.product_id})">编辑</button>`})));
+  window._products = r;
+}
+function openProductForm(){ $('pform').style.display='block'; ['pf_id','pf_sku','pf_asin','pf_title','pf_color','pf_size','pf_price','pf_weight','pf_1688','pf_url','pf_spec'].forEach(i=>$(i).value=''); window.scroll({top:document.body.scrollHeight,behavior:'smooth'}); }
+async function editProduct(id){
+  const p = window._products.find(x=>x.product_id===id);
+  if(!p) return alert('未找到产品');
+  $('pform').style.display='block';
+  $('pf_id').value = p.product_id; $('pf_sku').value = p.sku||''; $('pf_asin').value = p.asin||'';
+  $('pf_title').value = p.title||''; $('pf_color').value = p.color||''; $('pf_size').value = p.size||'';
+  $('pf_price').value = p.purchase_price||''; $('pf_weight').value = p.ref_weight||'';
+  $('pf_1688').value = p.p1688_id||''; $('pf_url').value = p.purchase_url||''; $('pf_spec').value = p.purchase_spec||'';
+  window.scroll({top:document.body.scrollHeight,behavior:'smooth'});
+}
+async function saveProduct(){
+  const body = {
+    product_id: $('pf_id').value ? Number($('pf_id').value) : null,
+    sku: $('pf_sku').value, asin:$('pf_asin').value, title:$('pf_title').value,
+    color:$('pf_color').value, size:$('pf_size').value,
+    purchase_price: $('pf_price').value || null, ref_weight: $('pf_weight').value || null,
+    p1688_id:$('pf_1688').value, purchase_url:$('pf_url').value, purchase_spec:$('pf_spec').value,
+  };
+  await api('/api/products', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  loadProducts();
+}
+
+// ---------- 乱码映射 ----------
+async function loadAliases(){
+  const r = await api('/api/aliases/pending');
+  renderTable('tbl_aliases', ['alias_sku','bound_sku','_pid','_op'], r.map(a=>({
+    alias_sku: a.alias_sku, bound_sku: a.bound_sku || '-',
+    _pid: `<input type="number" id="apid_${a.alias_sku}" placeholder="产品ID" style="width:90px" value="${a.product_id||''}">`,
+    _op: `<button class="btn sm" onclick="bindAlias('${a.alias_sku}')">绑定</button>`})));
+}
+async function bindAlias(alias){
+  const pid = $(`apid_${alias}`).value;
+  if(!pid) return alert('填写目标产品ID（先在商品库查到该产品ID）');
+  await api('/api/aliases/bind', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({alias_sku:alias, product_id: Number(pid)})});
+  loadAliases(); addLog('已绑定 ' + alias);
+}
+function addLog(t){ }
+
+// ---------- 去重审核 ----------
+async function loadReview(){
+  const r = await api('/api/dedup/review');
+  renderTable('tbl_review', ['id','sku','field','old_value','new_value','_op'], r.map(x=>({
+    id: x.status, sku: x.sku, field: x.field, old_value: x.old_value, new_value: x.new_value,
+    _op: x.status==='pending'
+      ? `<button class="btn sm green" onclick="reviewApply(${x.id},true)">采用新值</button> <button class="btn sm gray" onclick="reviewApply(${x.id},false)">保留旧值</button>`
+      : `<span class="badge ${x.status==='approved'?'green':'red'}">${x.status}</span>`,
+    id_detail: x.id})));
+}
+async function reviewApply(id, keep){
+  const fd = new FormData(); fd.append('keep_new', String(keep));
+  await api(`/api/dedup/review/${id}/apply`, {method:'POST', body:fd}); loadReview();
+}
+
+// ---------- 重量 ----------
+async function loadWeights(){
+  const sku = $('q_weights').value;
+  const r = await api('/api/weights?sku=' + encodeURIComponent(sku));
+  renderTable('tbl_weights', ['sku','batch_at','weight','source'], r);
+}
+
+// ---------- 称重对账 ----------
+async function loadChecks(){
+  const r = await api('/api/courier/checks');
+  renderTable('tbl_checks', ['ref_no','our_weight','courier_weight','diff_pct','alert','resolved'], r.map(c=>({
+    ...c, ref_no: c.ref_no,
+    diff_pct: c.diff_pct===null?'-':c.diff_pct+'%',
+    alert: c.alert ? '<span class="badge red">⚠ 超阈值</span>' : '<span class="badge green">正常</span>',
+    resolved: c.resolved ? '<span class="badge">已采用</span>' : '<input type="checkbox" class="chk" value="'+c.id+'">',
+  })));
+}
+async function applyCourier(){
+  const ids = [...document.querySelectorAll('.chk:checked')].map(x=>Number(x.value));
+  if(!ids.length) return alert('勾选要采用的记录');
+  await api('/api/courier/apply', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(ids)});
+  loadChecks();
+}
+
+// ---------- 采购单 ----------
+async function loadPurchases(){
+  const r = await api('/api/purchase/orders');
+  renderTable('tbl_purchase', ['batch_id','p1688_id','url','sku','spec','qty','unit_price'], r);
+}
+
+// ---------- 利润报告 ----------
+async function loadReport(){
+  const r = await api('/api/report/profit');
+  renderTable('tbl_report', ['sku','title','purchase_price','weight','weight_source','freight_est','price','price_source','floor_price','floor_note','net_profit'], r);
+}
+
+// ---------- 配置 ----------
+async function loadConfig(){
+  const c = await api('/api/config');
+  $('cfg_inventory').value = c.inventory||''; $('cfg_adjust_price').value = c.adjust_price||'';
+  $('cfg_max_purchase').value = c.max_purchase||''; $('cfg_threshold').value = c.weight_diff_threshold||'';
+  $('cfg_commission').value = c.commission_rate||''; $('cfg_margin').value = c.target_margin||'';
+  $('cfg_address').value = c.purchase_address||'';
+  $('cfg_webhook').value = c.lark_webhook||'';
+  const t = await api('/api/freight/templates');
+  renderTable('tbl_templates', ['channel','first_weight','first_price','cont_weight','cont_price'], t.templates);
+  renderTable('tbl_surcharges', ['channel','country','postcode_pattern','surcharge'], t.surcharges);
+  renderDict();
+}
+async function saveConfig(){
+  const body = {inventory:$('cfg_inventory').value, adjust_price:$('cfg_adjust_price').value,
+    max_purchase:$('cfg_max_purchase').value, weight_diff_threshold:$('cfg_threshold').value,
+    commission_rate:$('cfg_commission').value, target_margin:$('cfg_margin').value,
+    purchase_address:$('cfg_address').value, lark_webhook:$('cfg_webhook').value};
+  await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  alert('已保存');
+}
+async function addTemplate(){
+  const body = {channel:$('ft_channel').value, first_weight:$('ft_first_w').value, first_price:$('ft_first_p').value,
+    cont_weight:$('ft_cont_w').value, cont_price:$('ft_cont_p').value};
+  await api('/api/freight/templates', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  loadConfig();
+}
+async function addSurcharge(){
+  const body = {channel:$('ps_channel').value, postcode_pattern:$('ps_pattern').value, surcharge:$('ps_amount').value};
+  await api('/api/freight/surcharges', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  loadConfig();
+}
+async function renderDict(){
+  const kind = $('dict_kind').value;
+  const d = await api('/api/dicts?kind=' + kind);
+  $('dict_view').textContent = Object.entries(d).map(([k,v])=>`${k} ← ${v.join(', ')}`).join('\n');
+}
+async function addDict(){
+  await api('/api/dicts', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({kind:$('dict_kind').value, std:$('dict_std').value, alias:$('dict_alias').value})});
+  renderDict();
+}
+$('dict_kind').onchange = renderDict;
+
+// ---------- 渲染 ----------
+function renderTable(tid, cols, rows){
+  const tb = $(tid).querySelector('tbody'); tb.innerHTML = '';
+  const head = $(tid).querySelector('thead tr');
+  head.innerHTML = cols.map(c=>`<th>${c.startsWith('_')?c.slice(1):c}</th>`).join('');
+  if(!rows || !rows.length){ tb.innerHTML = '<tr><td colspan="'+cols.length+'">暂无数据</td></tr>'; return; }
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    cols.forEach(c => {
+      const td = document.createElement('td');
+      if(c.startsWith('_')){ td.innerHTML = r[c] ?? ''; }
+      else { const v = r[c]; td.innerHTML = esc(v === null || v === undefined || v === '' ? '-' : v); }
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+}
+
+loadProducts();
+</script>
+</body>
+</html>
