@@ -79,6 +79,8 @@ def process_shipping(df, mapping, batch: str, xlsx_path=None, images_by_row=None
         profit_est, note = None, ""
         if product is None:
             note = "产品未入库"
+        elif purchase is None:
+            note = "缺采购价"
         elif sales is None:
             note = "缺销售额"
         else:

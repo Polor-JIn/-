@@ -93,6 +93,7 @@ def read_table(file_bytes, filename):
         df = pd.read_excel(io.BytesIO(file_bytes), engine="openpyxl", dtype=str)
     df.columns = [str(c).strip() for c in df.columns]
     df = df.dropna(how="all")
+    df = df.fillna("")   # 空单元格统一为空串，避免读成 'nan' 字符串
     return df
 
 
