@@ -84,7 +84,7 @@ def process_shipping(df, mapping, batch: str, xlsx_path=None, images_by_row=None
         elif sales is None:
             note = "缺销售额"
         else:
-            fre, add, why = freight_svc.total_freight(channel, weight_raw, postcode)
+            fre, add, why = freight_svc.total_freight(channel, weight_raw, postcode, qty)
             if fre is None:
                 fre = 0.0
             profit_est = round(sales - (purchase or 0) * qty - fre, 2)

@@ -67,6 +67,12 @@ CREATE TABLE IF NOT EXISTS freight_template (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     channel TEXT, first_weight REAL, first_price REAL, cont_weight REAL, cont_price REAL, currency TEXT DEFAULT 'USD'
 );
+CREATE TABLE IF NOT EXISTS freight_zone (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel TEXT NOT NULL, code TEXT, country TEXT,
+    weight_low REAL, weight_high REAL,
+    price REAL, op_fee REAL, currency TEXT DEFAULT 'CNY'
+);
 CREATE TABLE IF NOT EXISTS postcode_surcharge (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     channel TEXT, country TEXT, postcode_pattern TEXT, surcharge REAL, note TEXT

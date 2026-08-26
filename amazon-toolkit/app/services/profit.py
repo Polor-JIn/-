@@ -44,7 +44,7 @@ def report(conn=None):
             {"product_id": p["product_id"], "purchase_price": p["purchase_price"], "target_margin": p["target_margin"]}, conn)
         freight_est = 0.0
         if w:
-            f, add, _ = freight_svc.total_freight("", w, "", conn)
+            f, add, _ = freight_svc.total_freight("", w, "", conn=conn)
             freight_est = f or 0.0
         latest = conn.execute(
             "SELECT * FROM price_history WHERE product_id=? ORDER BY ref_date DESC, id DESC LIMIT 1",

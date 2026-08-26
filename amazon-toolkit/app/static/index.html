@@ -208,12 +208,17 @@ a{color:#27408b}
         <table id="tbl_templates"><thead><tr><th>渠道</th><th>首重kg</th><th>首重价</th><th>续重kg</th><th>续重价</th></tr></thead><tbody></tbody></table>
       </div>
       <div class="card">
-        <h2>偏远邮编附加费</h2>
-        <div class="row">
-          <input type="text" id="ps_channel" placeholder="渠道(可空=全渠道)"><input type="text" id="ps_pattern" placeholder="邮编前缀 如 99"><input type="number" id="ps_amount" placeholder="附加费" step="0.01">
+        <h2>运费区间计费（已从加拿大运费模板导入）</h2>
+        <table id="tbl_zones"><thead><tr><th>渠道</th><th>产品代码</th><th>重量下限kg</th><th>重量上限kg</th><th>运费(元)</th><th>操作费/件(元)</th></tr></thead><tbody></tbody></table>
+        <div class="tip">发货单渠道列会先精确匹配渠道名/产品代码，再按包含文字匹配（如"商业派送"可命中）。偏远邮编费用在下方表。</div>
+      </div>
+      <div class="card">
+        <h2>偏远邮编附加费（模板已导入 2232 条，含前缀聚合）</h2>
+        <table id="tbl_surcharges"><thead><tr><th>渠道</th><th>国家</th><th>邮编/前缀</th><th>附加费(元)</th></tr></thead><tbody></tbody></table>
+        <div class="row" style="margin-top:8px">
+          <input type="text" id="ps_channel" placeholder="渠道(可空=全渠道)"><input type="text" id="ps_pattern" placeholder="邮编前缀 如 T1X"><input type="number" id="ps_amount" placeholder="附加费" step="0.01">
           <button class="btn sm" onclick="addSurcharge()">添加</button>
         </div>
-        <table id="tbl_surcharges"><thead><tr><th>渠道</th><th>国家</th><th>邮编前缀</th><th>附加费</th></tr></thead><tbody></tbody></table>
       </div>
       <div class="card">
         <h2>颜色 / 尺码字典</h2>
@@ -408,6 +413,7 @@ async function loadConfig(){
   $('cfg_webhook').value = c.lark_webhook||'';
   const t = await api('/api/freight/templates');
   renderTable('tbl_templates', ['channel','first_weight','first_price','cont_weight','cont_price'], t.templates);
+  renderTable('tbl_zones', ['channel','code','weight_low','weight_high','price','op_fee'], t.zones);
   renderTable('tbl_surcharges', ['channel','country','postcode_pattern','surcharge'], t.surcharges);
   renderDict();
 }

@@ -51,11 +51,14 @@ def process_listing(df, mapping, batch: str):
 
 
 def _write_listing_xlsx(path, rows):
+    """按用户 '跟卖商品模板' 的 8 列结构导出：
+    Asin | SKU | 价格 | 采购链接 | 保底价 | 单次调整金额 | 库存 | 最大订单数量
+    价格 / 保底价 留空高亮（待填）；采购链接取商品库已录的 1688 链接。"""
     wb = Workbook()
     ws = wb.active
-    ws.title = "上架表"
-    headers = ["SKU", "ASIN", "标题", "颜色", "尺码",
-               "库存", "单次调整价格", "最大采购量", "价格", "保低价", "处理状态"]
+    ws.title = "跟卖商品"
+    headers = ["Asin", "SKU", "价格", "采购链接", "保底价",
+               "单次调整金额", "库存", "最大订单数量"]
     header_fill = PatternFill("solid", start_color="4472C4")
     pending_fill = PatternFill("solid", start_color="FFF2CC")
     for c, h in enumerate(headers, 1):
@@ -69,20 +72,20 @@ def _write_listing_xlsx(path, rows):
     maxp = db.get_config("max_purchase", "5")
 
     for i, r in enumerate(rows, start=2):
-        ws.cell(i, 1, r["sku"])
-        ws.cell(i, 2, r["asin"])
-        ws.cell(i, 3, r["title"])
-        ws.cell(i, 4, r["color"])
-        ws.cell(i, 5, r["size"])
-        ws.cell(i, 6, inv)
-        ws.cell(i, 7, adj)
-        ws.cell(i, 8, maxp)
-        price_cell = ws.cell(i, 9)   # 价格：留空待填，黄底
-        floor_cell = ws.cell(i, 10)  # 保低价：留空待填，黄底
+        ws.cell(i, 1, r["asin"])
+        ws.cell(i, 2, r["sku"])
+        price_cell = ws.cell(i, 3)   # 价格：留空待填，黄底
+        floor_cell = ws.cell(i, 5)   # 保低价：留空待填，黄底
         for cell in (price_cell, floor_cell):
             cell.fill = pending_fill
-        ws.cell(i, 11, r["action"])
-    widths = [18, 14, 46, 10, 8, 8, 12, 12, 10, 10, 18]
+        # 采购链接：优先取商品库已维护的 1688 链接
+        conn = db.get_conn()
+        row = conn.execute("SELECT purchase_url FROM product_master WHERE sku=?", (r["sku"],)).fetchone()
+        ws.cell(i, 4, row["purchase_url"] if row and row["purchase_url"] else "")
+        ws.cell(i, 6, adj)
+        ws.cell(i, 7, inv)
+        ws.cell(i, 8, maxp)
+    widths = [16, 20, 10, 42, 10, 16, 8, 14]
     for c, w in enumerate(widths, 1):
         ws.column_dimensions[chr(64 + c)].width = w
     ws.freeze_panes = "A2"

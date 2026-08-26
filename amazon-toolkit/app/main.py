@@ -271,7 +271,8 @@ def add_dicts(p: dict):
 
 @app.get("/api/freight/templates")
 def get_templates():
-    return {"templates": freight_svc.templates(), "surcharges": freight_svc.surcharges()}
+    return {"templates": freight_svc.templates(), "zones": freight_svc.zones(),
+            "surcharges": freight_svc.surcharges()}
 
 
 @app.post("/api/freight/templates")
