@@ -130,6 +130,17 @@ def product_upsert(p: dict):
     return {"ok": True}
 
 
+@app.delete("/api/products/{pid}")
+def product_delete(pid: int):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM product_master WHERE product_id=?", (pid,))
+    conn.execute("DELETE FROM sku_alias WHERE product_id=?", (pid,))
+    conn.execute("DELETE FROM weight_history WHERE product_id=?", (pid,))
+    conn.execute("DELETE FROM price_history WHERE product_id=?", (pid,))
+    conn.commit()
+    return {"ok": True}
+
+
 # ---------- 乱码映射 ----------
 
 @app.get("/api/aliases/pending")
@@ -144,6 +155,14 @@ def aliases_pending():
 @app.post("/api/aliases/bind")
 def alias_bind(p: dict):
     sku_gen.bind_alias(p["alias_sku"], p.get("product_id"), p.get("note", ""))
+    return {"ok": True}
+
+
+@app.delete("/api/aliases/{alias_sku}")
+def alias_delete(alias_sku: str):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM sku_alias WHERE alias_sku=?", (alias_sku,))
+    conn.commit()
     return {"ok": True}
 
 

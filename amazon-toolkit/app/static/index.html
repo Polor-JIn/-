@@ -22,6 +22,7 @@ input[type=file]{font-size:13px}
 .btn{background:#27408b;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px}
 .btn.gray{background:#8a93a6}
 .btn.green{background:#2e8b57}
+.btn.red{background:#c0392b}
 .btn.sm{padding:4px 10px;font-size:12px}
 .btn:hover{opacity:.9}
 input[type=text],input[type=number]{padding:7px 10px;border:1px solid #ccd0d7;border-radius:6px;font-size:13px}
@@ -309,7 +310,7 @@ async function loadProducts(){
   const q = $('q_products').value;
   const r = await api('/api/products?q=' + encodeURIComponent(q));
   renderTable('tbl_products', ['sku','asin','title','color','size','purchase_price','ref_weight','p1688_id','purchase_spec','source','status','_op'],
-    r.map(p=>({...p, _op:`<button class="btn sm" onclick="editProduct(${p.product_id})">编辑</button>`})));
+    r.map(p=>({...p, _op:`<button class="btn sm" onclick="editProduct(${p.product_id})">编辑</button> <button class="btn sm red" onclick="delProduct(${p.product_id})">删除</button>`})));
   window._products = r;
 }
 function openProductForm(){ $('pform').style.display='block'; ['pf_id','pf_sku','pf_asin','pf_title','pf_color','pf_size','pf_price','pf_weight','pf_1688','pf_url','pf_spec'].forEach(i=>$(i).value=''); window.scroll({top:document.body.scrollHeight,behavior:'smooth'}); }
@@ -334,6 +335,12 @@ async function saveProduct(){
   await api('/api/products', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
   loadProducts();
 }
+async function delProduct(id){
+  if(!confirm('确认删除该产品？关联的乱码映射、重量记录、价格记录也会一并删除。')) return;
+  await api('/api/products/'+id, {method:'DELETE'});
+  loadProducts();
+  addLog('已删除产品ID '+id);
+}
 
 // ---------- 乱码映射 ----------
 async function loadAliases(){
@@ -341,7 +348,7 @@ async function loadAliases(){
   renderTable('tbl_aliases', ['alias_sku','bound_sku','_pid','_op'], r.map(a=>({
     alias_sku: a.alias_sku, bound_sku: a.bound_sku || '-',
     _pid: `<input type="number" id="apid_${a.alias_sku}" placeholder="产品ID" style="width:90px" value="${a.product_id||''}">`,
-    _op: `<button class="btn sm" onclick="bindAlias('${a.alias_sku}')">绑定</button>`})));
+    _op: `<button class="btn sm" onclick="bindAlias('${a.alias_sku}')">绑定</button> <button class="btn sm red" onclick="delAlias('${a.alias_sku}')">删除</button>`})));
 }
 async function bindAlias(alias){
   const pid = $(`apid_${alias}`).value;
@@ -349,6 +356,11 @@ async function bindAlias(alias){
   await api('/api/aliases/bind', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({alias_sku:alias, product_id: Number(pid)})});
   loadAliases(); addLog('已绑定 ' + alias);
+}
+async function delAlias(alias){
+  if(!confirm('确认删除该乱码映射？')) return;
+  await api('/api/aliases/'+encodeURIComponent(alias), {method:'DELETE'});
+  loadAliases(); addLog('已删除乱码映射 '+alias);
 }
 function addLog(t){ }
 
